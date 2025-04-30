@@ -1,13 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import datetime
-from PIL import Image
-from io import BytesIO
+from datetime import datetime
 
 # Set page config
 st.set_page_config(
@@ -67,24 +61,6 @@ st.markdown("""
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         margin-bottom: 2rem;
     }
-    .filters-container {
-        background-color: #f8fafc;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid #e2e8f0;
-    }
-    .filter-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #334155;
-        margin-bottom: 1rem;
-    }
-    .stButton>button {
-        background-color: #2563eb;
-        color: white;
-        font-weight: 500;
-    }
     .info-box {
         background-color: #eff6ff;
         border-radius: 8px;
@@ -130,7 +106,7 @@ def load_data(file_path='ireland_cleaned_CHGF.xlsx'):
                 high_growth_firms[col] = pd.to_numeric(high_growth_firms[col], errors='coerce').fillna(0)
         
         # Calculate company age
-        current_year = datetime.datetime.now().year
+        current_year = datetime.now().year
         
         # Handle 'Founded Year' column
         if 'Founded Year' in high_growth_firms.columns:
@@ -169,224 +145,6 @@ def load_data(file_path='ireland_cleaned_CHGF.xlsx'):
         st.error(f"Error loading data: {e}")
         return None
 
-# Create geographical distribution chart
-def create_geo_chart(df, region_col, value_col=None, title=None):
-    if df is None or len(df) == 0:
-        return None
-    
-    if region_col not in df.columns:
-        return None
-    
-    # Get counts by region
-    if value_col:
-        region_data = df.groupby(region_col)[value_col].sum().reset_index()
-        region_data.columns = [region_col, 'Value']
-    else:
-        region_data = df[region_col].value_counts().reset_index()
-        region_data.columns = [region_col, 'Count']
-    
-    # Sort by count/value
-    value_col_name = 'Value' if value_col else 'Count'
-    region_data = region_data.sort_values(by=value_col_name, ascending=False)
-    
-    # Create chart
-    fig = px.bar(
-        region_data, 
-        x=region_col, 
-        y=value_col_name,
-        title=title or f'Distribution by {region_col}',
-        color=value_col_name,
-        color_continuous_scale='Viridis',
-        labels={region_col: region_col.replace('_', ' '), value_col_name: value_col_name}
-    )
-    
-    fig.update_layout(
-        height=500,
-        xaxis_title=region_col.replace('_', ' '),
-        yaxis_title=value_col_name,
-        xaxis_tickangle=-45,
-        title_x=0.5,
-        title_font_size=16,
-        margin=dict(l=40, r=40, t=60, b=80),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
-    
-    return fig
-
-# Create topic distribution chart
-def create_topic_chart(df, topic_col, title=None):
-    if df is None or len(df) == 0 or topic_col not in df.columns:
-        return None
-    
-    # Get topic counts
-    topic_counts = df[topic_col].value_counts().reset_index()
-    topic_counts.columns = [topic_col, 'Count']
-    
-    # Limit to top 15 topics for readability
-    if len(topic_counts) > 15:
-        other_count = topic_counts.iloc[15:]['Count'].sum()
-        topic_counts = topic_counts.iloc[:15]
-        other_row = pd.DataFrame({topic_col: ['Other'], 'Count': [other_count]})
-        topic_counts = pd.concat([topic_counts, other_row], ignore_index=True)
-    
-    # Create pie chart
-    fig = px.pie(
-        topic_counts, 
-        names=topic_col, 
-        values='Count',
-        title=title or f'Distribution by {topic_col}',
-        hole=0.4,
-        color_discrete_sequence=px.colors.qualitative.Pastel
-    )
-    
-    fig.update_layout(
-        height=600,
-        title_x=0.5,
-        title_font_size=16,
-        margin=dict(l=20, r=20, t=60, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
-    )
-    
-    fig.update_traces(textposition='inside', textinfo='percent+label')
-    
-    return fig
-
-# Create age distribution chart
-def create_age_chart(df, age_col, age_cat_col):
-    if df is None or len(df) == 0:
-        return None
-    
-    if age_col not in df.columns or age_cat_col not in df.columns:
-        return None
-    
-    # Create histogram for company age
-    fig = make_subplots(
-        rows=1, cols=2,
-        specs=[[{"type": "histogram"}, {"type": "pie"}]],
-        subplot_titles=("Company Age Distribution", "Age Categories")
-    )
-    
-    # Histogram of company age
-    fig.add_trace(
-        go.Histogram(
-            x=df[age_col].dropna(),
-            nbinsx=20,
-            marker_color='rgba(55, 83, 109, 0.7)',
-            marker_line_color='rgba(55, 83, 109, 1)',
-            marker_line_width=1
-        ),
-        row=1, col=1
-    )
-    
-    # Pie chart of age categories
-    age_cats = df[age_cat_col].value_counts().reset_index()
-    age_cats.columns = [age_cat_col, 'Count']
-    
-    fig.add_trace(
-        go.Pie(
-            labels=age_cats[age_cat_col],
-            values=age_cats['Count'],
-            hole=0.4,
-            marker_colors=px.colors.sequential.Viridis
-        ),
-        row=1, col=2
-    )
-    
-    # Update layout
-    fig.update_layout(
-        height=500,
-        title='Company Age Analysis',
-        title_x=0.5,
-        title_font_size=16,
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-        margin=dict(l=20, r=20, t=80, b=80)
-    )
-    
-    # Update x and y axis labels
-    fig.update_xaxes(title_text="Age (Years)", row=1, col=1)
-    fig.update_yaxes(title_text="Number of Companies", row=1, col=1)
-    
-    return fig
-
-# Create industry breakdown chart
-def create_industry_chart(df, industry_col, title=None):
-    if df is None or len(df) == 0 or industry_col not in df.columns:
-        return None
-    
-    # Get industry counts
-    industry_counts = df[industry_col].value_counts().reset_index()
-    industry_counts.columns = [industry_col, 'Count']
-    
-    # Limit to top 10 industries for readability
-    if len(industry_counts) > 10:
-        industry_counts = industry_counts.head(10)
-    
-    # Create horizontal bar chart
-    fig = px.bar(
-        industry_counts, 
-        x='Count', 
-        y=industry_col,
-        title=title or f'Top Industries',
-        orientation='h',
-        color='Count',
-        color_continuous_scale='Viridis',
-        labels={industry_col: industry_col.replace('_', ' '), 'Count': 'Number of Companies'}
-    )
-    
-    fig.update_layout(
-        height=500,
-        yaxis_title="",
-        xaxis_title="Number of Companies",
-        title_x=0.5,
-        title_font_size=16,
-        margin=dict(l=20, r=40, t=60, b=40),
-        yaxis={'categoryorder':'total ascending'}
-    )
-    
-    return fig
-
-# Create correlation analysis
-def create_correlation_chart(df, columns, title=None):
-    if df is None or len(df) == 0:
-        return None
-    
-    # Ensure all columns exist and contain numeric data
-    valid_columns = []
-    for col in columns:
-        if col in df.columns:
-            try:
-                # Convert to numeric and drop NaN values
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-                if not df[col].isna().all():  # If not all values are NaN
-                    valid_columns.append(col)
-            except:
-                pass
-    
-    if len(valid_columns) < 2:
-        return None
-    
-    # Calculate correlation matrix
-    corr_matrix = df[valid_columns].corr()
-    
-    # Create heatmap
-    fig = px.imshow(
-        corr_matrix,
-        text_auto=True,
-        color_continuous_scale='RdBu_r',
-        zmin=-1, zmax=1,
-        title=title or "Correlation Analysis"
-    )
-    
-    fig.update_layout(
-        height=600,
-        title_x=0.5,
-        title_font_size=16
-    )
-    
-    return fig
-
 # Main dashboard function
 def main():
     # Title
@@ -416,19 +174,6 @@ def main():
         age_categories = sorted(df['Age Category'].unique())
         selected_age_cats = st.sidebar.multiselect("Filter by Company Age", age_categories)
         
-        # Revenue range filter
-        if 'Estimated_Revenue_mn' in df.columns:
-            min_revenue = float(df['Estimated_Revenue_mn'].min())
-            max_revenue = float(df['Estimated_Revenue_mn'].max())
-            revenue_range = st.sidebar.slider(
-                "Revenue Range (€ millions)", 
-                min_value=min_revenue,
-                max_value=max_revenue,
-                value=(min_revenue, max_revenue)
-            )
-        else:
-            revenue_range = None
-        
         # Apply filters
         filtered_df = df.copy()
         
@@ -440,12 +185,6 @@ def main():
         
         if selected_age_cats:
             filtered_df = filtered_df[filtered_df['Age Category'].isin(selected_age_cats)]
-        
-        if revenue_range and 'Estimated_Revenue_mn' in filtered_df.columns:
-            filtered_df = filtered_df[
-                (filtered_df['Estimated_Revenue_mn'] >= revenue_range[0]) & 
-                (filtered_df['Estimated_Revenue_mn'] <= revenue_range[1])
-            ]
         
         # Reset filters button
         if st.sidebar.button("Reset All Filters"):
@@ -490,98 +229,75 @@ def main():
         # Geographical Distribution Section
         st.markdown("<h2 class='section-header'>Geographical Distribution</h2>", unsafe_allow_html=True)
         
-        geo_tab1, geo_tab2 = st.tabs(["City Distribution", "Regional Distribution"])
+        # City distribution
+        city_counts = filtered_df['City'].value_counts().reset_index()
+        city_counts.columns = ['City', 'Count']
+        city_counts = city_counts.sort_values('Count', ascending=False).head(10)
         
-        with geo_tab1:
-            city_chart = create_geo_chart(filtered_df, 'City', title='Distribution of High-Growth Firms by City')
-            if city_chart:
-                st.plotly_chart(city_chart, use_container_width=True)
-            else:
-                st.info("Insufficient city data for visualization.")
+        st.subheader("Top Cities with High-Growth Firms")
+        st.bar_chart(city_counts.set_index('City'))
         
-        with geo_tab2:
-            if 'Region in country' in filtered_df.columns:
-                region_chart = create_geo_chart(filtered_df, 'Region in country', title='Distribution of High-Growth Firms by Region')
-                if region_chart:
-                    st.plotly_chart(region_chart, use_container_width=True)
-                else:
-                    st.info("Insufficient region data for visualization.")
-            else:
-                st.info("Regional data not available in the dataset.")
+        # Regional distribution if available
+        if 'Region in country' in filtered_df.columns:
+            region_counts = filtered_df['Region in country'].value_counts().reset_index()
+            region_counts.columns = ['Region', 'Count']
+            region_counts = region_counts.sort_values('Count', ascending=False)
+            
+            st.subheader("Regional Distribution")
+            st.bar_chart(region_counts.set_index('Region'))
         
         # Topic Distribution Section
         st.markdown("<h2 class='section-header'>Topic Distribution</h2>", unsafe_allow_html=True)
         
-        topic_tab1, topic_tab2 = st.tabs(["Topic Overview", "Industry Breakdown"])
+        # Topic distribution if available
+        if 'Topic' in filtered_df.columns:
+            topic_counts = filtered_df['Topic'].value_counts().reset_index()
+            topic_counts.columns = ['Topic', 'Count']
+            topic_counts = topic_counts.sort_values('Count', ascending=False).head(10)
+            
+            st.subheader("Top Business Topics")
+            st.bar_chart(topic_counts.set_index('Topic'))
         
-        with topic_tab1:
-            if 'Topic' in filtered_df.columns:
-                topic_chart = create_topic_chart(filtered_df, 'Topic', title='Distribution of High-Growth Firms by Topic')
-                if topic_chart:
-                    st.plotly_chart(topic_chart, use_container_width=True)
-                else:
-                    st.info("Insufficient topic data for visualization.")
-            else:
-                st.info("Topic data not available in the dataset.")
+        # Industry distribution
+        industry_counts = filtered_df['NACE_Industry'].value_counts().reset_index()
+        industry_counts.columns = ['Industry', 'Count']
+        industry_counts = industry_counts.sort_values('Count', ascending=False).head(10)
         
-        with topic_tab2:
-            industry_chart = create_industry_chart(filtered_df, 'NACE_Industry', title='Top Industries among High-Growth Firms')
-            if industry_chart:
-                st.plotly_chart(industry_chart, use_container_width=True)
-            else:
-                st.info("Insufficient industry data for visualization.")
+        st.subheader("Top Industries")
+        st.bar_chart(industry_counts.set_index('Industry'))
         
         # Company Age Section
         st.markdown("<h2 class='section-header'>Company Age Analysis</h2>", unsafe_allow_html=True)
         
-        age_chart = create_age_chart(filtered_df, 'Company Age', 'Age Category')
-        if age_chart:
-            st.plotly_chart(age_chart, use_container_width=True)
+        # Age category distribution
+        age_counts = filtered_df['Age Category'].value_counts().reset_index()
+        age_counts.columns = ['Age Category', 'Count']
+        
+        st.subheader("Distribution by Age Category")
+        st.bar_chart(age_counts.set_index('Age Category'))
+        
+        # Data explorer tab
+        st.markdown("<h2 class='section-header'>Data Explorer</h2>", unsafe_allow_html=True)
+        st.markdown("#### Explore the Raw Data")
+        st.markdown("View and interact with the filtered dataset:")
+        
+        # Display columns selector
+        available_cols = filtered_df.columns.tolist()
+        selected_cols = st.multiselect("Select columns to display", available_cols, default=available_cols[:8])
+        
+        if selected_cols:
+            st.dataframe(filtered_df[selected_cols], use_container_width=True)
         else:
-            st.info("Insufficient company age data for visualization.")
+            st.dataframe(filtered_df, use_container_width=True)
         
-        # Advanced Analytics Section
-        st.markdown("<h2 class='section-header'>Advanced Analytics</h2>", unsafe_allow_html=True)
-        
-        analytics_tab1, analytics_tab2 = st.tabs(["Correlation Analysis", "Data Explorer"])
-        
-        with analytics_tab1:
-            corr_cols = ['Company Age', 'Estimated_Revenue_mn', 'Number of employees 2023', 'Growth 2023']
-            corr_chart = create_correlation_chart(filtered_df, corr_cols, title='Correlation Between Key Metrics')
-            if corr_chart:
-                st.plotly_chart(corr_chart, use_container_width=True)
-                st.markdown("""
-                **Understanding the correlation matrix:**
-                * Values close to 1 indicate a strong positive correlation
-                * Values close to -1 indicate a strong negative correlation
-                * Values close to 0 indicate little to no correlation
-                """)
-            else:
-                st.info("Insufficient numeric data for correlation analysis.")
-        
-        with analytics_tab2:
-            st.markdown("#### Explore the Raw Data")
-            st.markdown("View and interact with the filtered dataset:")
-            
-            # Display columns selector
-            available_cols = filtered_df.columns.tolist()
-            selected_cols = st.multiselect("Select columns to display", available_cols, default=available_cols[:8])
-            
-            if selected_cols:
-                st.dataframe(filtered_df[selected_cols], use_container_width=True)
-            else:
-                st.dataframe(filtered_df, use_container_width=True)
-            
-            # Add download button
-            csv_buffer = BytesIO()
-            filtered_df.to_csv(csv_buffer, index=False)
-            csv_buffer.seek(0)
-            st.download_button(
-                label="Download Filtered Data as CSV",
-                data=csv_buffer,
-                file_name=f"high_growth_firms_data_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                mime="text/csv"
-            )
+        # Add download button
+        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Filtered Data as CSV",
+            data=csv,
+            file_name=f"high_growth_firms_data_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv"
+        )
     else:
         st.error("Failed to load data. Please ensure the Excel file is available and properly formatted.")
     
