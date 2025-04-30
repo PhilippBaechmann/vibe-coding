@@ -4,12 +4,17 @@ import numpy as np
 from datetime import datetime
 from io import BytesIO
 
-# Set page config
+# Set page config with light theme
 st.set_page_config(
     page_title="Ireland High-Growth Firms Dashboard",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': 'Ireland High-Growth Firms Dashboard'
+    }
 )
 
 # Custom CSS
@@ -1041,31 +1046,11 @@ def main():
                     # Industry distribution charts
                     st.markdown("### Distribution Within Industry")
                     
-                    chart_cols = st.columns(2)
-                    
-                    # Company size distribution
-                    with chart_cols[0]:
-                        if 'Size Category' in industry_df.columns:
-                            st.subheader("Company Size Distribution")
-                            size_counts = industry_df['Size Category'].value_counts()
-                            st.bar_chart(size_counts, use_container_width=True)
-                        elif 'Number of employees 2023' in industry_df.columns:
-                            st.subheader("Employee Count Distribution")
-                            # Create histogram bins for employee count
-                            industry_df['Employee Range'] = pd.cut(
-                                industry_df['Number of employees 2023'],
-                                bins=[0, 10, 50, 100, 250, 500, 1000, float('inf')],
-                                labels=['1-9', '10-49', '50-99', '100-249', '250-499', '500-999', '1000+']
-                            )
-                            emp_counts = industry_df['Employee Range'].value_counts()
-                            st.bar_chart(emp_counts, use_container_width=True)
-                    
-                    # Age distribution
-                    with chart_cols[1]:
-                        if 'Age Category' in industry_df.columns:
-                            st.subheader("Company Age Distribution")
-                            age_counts = industry_df['Age Category'].value_counts()
-                            st.bar_chart(age_counts, use_container_width=True)
+                    # Age distribution only (removed size distribution)
+                    if 'Age Category' in industry_df.columns:
+                        st.subheader("Company Age Distribution")
+                        age_counts = industry_df['Age Category'].value_counts()
+                        st.bar_chart(age_counts, use_container_width=True)
                     
                     # Top companies in the industry
                     st.markdown("### Top Companies in This Industry")
