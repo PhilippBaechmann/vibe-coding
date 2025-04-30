@@ -129,16 +129,15 @@ def load_data(file_path='ireland_cleaned_CHGF.xlsx'):
             # If no founding date is available, create a placeholder
             high_growth_firms['Company Age'] = np.nan
         
-        # Create age categories
-        high_growth_firms['Age Category'] = pd.cut(
-            high_growth_firms['Company Age'],
-            bins=[0, 3, 5, 10, 20, float('inf')],
-            labels=['0-3 years', '3-5 years', '5-10 years', '10-20 years', '20+ years'],
-            right=False
-        )
+        # Create age categories - using string type instead of categorical to avoid issues
+        bins = [0, 3, 5, 10, 20, float('inf')]
+        labels = ['0-3 years', '3-5 years', '5-10 years', '10-20 years', '20+ years']
         
-        # Replace NaN age categories
-        high_growth_firms['Age Category'] = high_growth_firms['Age Category'].fillna('Unknown')
+        # Handle categorical data safely
+        high_growth_firms['Age Category'] = pd.cut(high_growth_firms['Company Age'], bins=bins, labels=labels)
+        # Convert to string type and handle NaN values
+        high_growth_firms['Age Category'] = high_growth_firms['Age Category'].astype(str)
+        high_growth_firms.loc[high_growth_firms['Age Category'] == 'nan', 'Age Category'] = 'Unknown'
         
         return high_growth_firms
     except Exception as e:
